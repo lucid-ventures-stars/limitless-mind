@@ -10,10 +10,17 @@ app.use(express.json({ limit: "50mb" }));
 // ---------- Decrypt cookies from environment variable ----------
 function decryptCookies() {
   try {
-    const encrypted = process.env.COOKIES_FILE;
+    const encryptedBase64 = process.env.COOKIES_FILE;
     const password = process.env.COOKIE_PASSWORD || process.env.COOKIE_SECRET || process.env.SECRET_KEY;
 
-    // ---- OpenSSL-compatible AES-256-CBC decryption ----
+    if (!encryptedBase64 || !password) {
+      throw new Error("Missing encrypted cookies or password.");
+    }
+
+    // Decode from Base64 first
+    const encrypted = Buffer.from(encryptedBase64, "base64");
+
+    // OpenSSL-compatible AES-256-CBC decryption
     const saltHeader = encrypted.slice(0, 8).toString();
     if (saltHeader !== "Salted__") {
       throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
@@ -30,6 +37,7 @@ function decryptCookies() {
       prev = crypto.createHash("md5").update(data).digest();
       keyIv.push(prev);
     }
+
     const derived = Buffer.concat(keyIv);
     const key = derived.slice(0, 32);
     const iv = derived.slice(32, 48);
