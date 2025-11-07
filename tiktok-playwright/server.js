@@ -81,10 +81,10 @@ app.post("/upload", async (req, res) => {
 
 const context = await browser.newContext();
 
-// 🧹 Normalise sameSite values
 for (const cookie of cookies) {
   if (cookie.sameSite === "no_restriction") cookie.sameSite = "None";
-  if (cookie.sameSite === "unspecified") delete cookie.sameSite;
+  else if (cookie.sameSite === "unspecified" || !cookie.sameSite) cookie.sameSite = "Lax";
+  else if (!["Strict", "Lax", "None"].includes(cookie.sameSite)) cookie.sameSite = "Lax";
 }
 
 await context.addCookies(cookies);
