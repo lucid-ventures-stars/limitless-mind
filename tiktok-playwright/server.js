@@ -20,45 +20,35 @@ console.log("🔍 ENV CHECK:", {
 function decryptCookies() {
   try {
     const encryptedBase64 = process.env.COOKIES_FILE;
-    const password = process.env.COOKIE_PASSWORD || process.env.COOKIE_SECRET || process.env.SECRET_KEY;
+    const password = process.env.COOKIE_PASSWORD;
 
     if (!encryptedBase64 || !password) {
       throw new Error("Missing encrypted cookies or password.");
     }
 
-    // Decode Base64 string into binary data
     const encrypted = Buffer.from(encryptedBase64, "base64");
 
-    // Validate header
-    const saltHeader = encrypted.slice(0, 8).toString();
-    if (saltHeader !== "Salted__") {
+    // Check OpenSSL header
+    const header = encrypted.slice(0, 8).toString();
+    if (header !== "Salted__") {
       throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
     }
 
     const salt = encrypted.slice(8, 16);
     const encryptedData = encrypted.slice(16);
 
-    // Derive key and IV using OpenSSL's EVP_BytesToKey equivalent
-    const keyIv = [];
-    let prev = Buffer.alloc(0);
-    while (Buffer.concat(keyIv).length < 48) {
-      const data = Buffer.concat([prev, Buffer.from(password), salt]);
-      prev = crypto.createHash("md5").update(data).digest();
-      keyIv.push(prev);
-    }
+    // Derive key and IV using PBKDF2 (matches `-pbkdf2` OpenSSL)
+    const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
+    const iv = crypto.pbkdf2Sync(password, salt, 100000, 16, "sha256");
 
-    const derived = Buffer.concat(keyIv);
-    const key = derived.slice(0, 32);
-    const iv = derived.slice(32, 48);
-
-    // Decrypt AES-256-CBC
+    // AES-256-CBC decryption
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
     const decrypted = Buffer.concat([
       decipher.update(encryptedData),
       decipher.final(),
     ]);
 
-    console.log("🔓 Cookies decrypted successfully.");
+    console.log("🔓 Cookies decrypted successfully (PBKDF2).");
     return JSON.parse(decrypted.toString());
   } catch (error) {
     console.error("❌ Cookie decryption failed:", error.message);
