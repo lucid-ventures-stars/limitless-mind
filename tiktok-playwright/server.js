@@ -19,39 +19,46 @@ console.log("🔍 ENV CHECK:", {
 // ---------- Decrypt cookies from environment variable ----------
 function decryptCookies() {
   try {
-    const encryptedBase64 = process.env.COOKIES_FILE;
+    // 1) Read + sanitize Base64 (remove whitespace, zero-width chars, BOM, and any data: prefix)
+    const rawB64 = (process.env.COOKIES_FILE || "")
+      .replace(/^data:.*?;base64,/, "")
+      .replace(/[\s\u200B-\u200D\uFEFF]/g, "")  // spaces, newlines, zero-width
+      .trim();
+
     const password = process.env.COOKIE_PASSWORD;
 
-    if (!encryptedBase64 || !password) {
+    if (!rawB64 || !password) {
       throw new Error("Missing encrypted cookies or password.");
     }
 
-    const encrypted = Buffer.from(encryptedBase64, "base64");
+    // 2) Quick visibility in logs (safe)
+    console.log("🔎 B64 prefix:", rawB64.slice(0, 12)); // should be "U2FsdGVkX1"
+    console.log("🔎 B64 length:", rawB64.length);
 
-    // Check OpenSSL header
-    const header = encrypted.slice(0, 8).toString();
-    if (header !== "Salted__") {
+    // 3) Decode
+    const encrypted = Buffer.from(rawB64, "base64");
+
+    // 4) Check OpenSSL header
+    const headerAscii = encrypted.slice(0, 8).toString("ascii");
+    console.log("🔎 header bytes:", headerAscii);
+    if (headerAscii !== "Salted__") {
       throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
     }
 
     const salt = encrypted.slice(8, 16);
     const encryptedData = encrypted.slice(16);
 
-    // Derive key and IV using PBKDF2 (matches `-pbkdf2` OpenSSL)
+    // 5) PBKDF2 (matches: -pbkdf2 -iter 100000)
     const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
-    const iv = crypto.pbkdf2Sync(password, salt, 100000, 16, "sha256");
+    const iv  = crypto.pbkdf2Sync(password, salt, 100000, 16, "sha256");
 
-    // AES-256-CBC decryption
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
-    const decrypted = Buffer.concat([
-      decipher.update(encryptedData),
-      decipher.final(),
-    ]);
+    const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
 
     console.log("🔓 Cookies decrypted successfully (PBKDF2).");
     return JSON.parse(decrypted.toString());
-  } catch (error) {
-    console.error("❌ Cookie decryption failed:", error.message);
+  } catch (err) {
+    console.error("❌ Cookie decryption failed:", err.message);
     throw new Error("Could not decrypt cookies. Check your env variables.");
   }
 }
