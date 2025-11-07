@@ -3,7 +3,6 @@ import { chromium } from "playwright";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import playwright from "playwright-core";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -15,7 +14,7 @@ console.log("🔍 ENV CHECK:", {
     ? `✅ Loaded (${process.env.COOKIES_FILE.length} chars)`
     : "❌ Missing",
   REGION: process.env.REGION ? process.env.REGION : "❌ Missing",
-  PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || "❌ Missing"
+  PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || "❌ Missing",
 });
 
 // ---------- Decrypt cookies ----------
@@ -77,7 +76,6 @@ app.post("/upload", async (req, res) => {
     console.log("🎬 Launching Chromium...");
     const browser = await chromium.launch({
       headless: true,
-      executablePath: playwright.chromium.executablePath(),
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
