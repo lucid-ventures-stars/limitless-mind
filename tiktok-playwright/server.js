@@ -108,6 +108,14 @@ app.get("/", (req, res) => {
   res.send("TikTok uploader is live. POST to /upload to upload videos.");
 });
 
+app.get("/env-check", (req, res) => {
+  res.json({
+    COOKIE_PASSWORD: process.env.COOKIE_PASSWORD ? "✅ Loaded" : "❌ Missing",
+    SECRET_KEY: process.env.SECRET_KEY ? "✅ Loaded" : "❌ Missing",
+    COOKIES_FILE: process.env.COOKIES_FILE ? "✅ Loaded" : "❌ Missing",
+  });
+});
+
 // ---------- Start Server ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
