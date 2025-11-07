@@ -13,7 +13,7 @@ function decryptCookies() {
     const encrypted = Buffer.from(process.env.COOKIES_FILE, "base64");
     const password = process.env.COOKIE_PASSWORD;
 
-    // ---- OpenSSL compatible decryption ----
+    // ---- OpenSSL-compatible AES-256-CBC decryption ----
     const saltHeader = encrypted.slice(0, 8).toString();
     if (saltHeader !== "Salted__") {
       throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
@@ -22,13 +22,20 @@ function decryptCookies() {
     const salt = encrypted.slice(8, 16);
     const encryptedData = encrypted.slice(16);
 
-    // Derive key and IV the same way OpenSSL does
-    const keyIv = crypto.pbkdf2Sync(password, salt, 1, 48, "md5");
-    const key = keyIv.slice(0, 32);
-    const iv = keyIv.slice(32, 48);
+    // Derive key and IV using OpenSSL's method
+    const keyIv = [];
+    let prev = Buffer.alloc(0);
+    while (Buffer.concat(keyIv).length < 48) {
+      const data = Buffer.concat([prev, Buffer.from(password), salt]);
+      prev = crypto.createHash("md5").update(data).digest();
+      keyIv.push(prev);
+    }
+    const derived = Buffer.concat(keyIv);
+    const key = derived.slice(0, 32);
+    const iv = derived.slice(32, 48);
 
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
-    let decrypted = Buffer.concat([
+    const decrypted = Buffer.concat([
       decipher.update(encryptedData),
       decipher.final(),
     ]);
