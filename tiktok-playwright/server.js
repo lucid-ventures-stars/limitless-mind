@@ -79,25 +79,40 @@ app.post("/upload", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-const context = await browser.newContext();
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+      ignoreHTTPSErrors: true,
+    });
 
-for (const cookie of cookies) {
-  if (cookie.sameSite === "no_restriction") cookie.sameSite = "None";
-  else if (cookie.sameSite === "unspecified" || !cookie.sameSite) cookie.sameSite = "Lax";
-  else if (!["Strict", "Lax", "None"].includes(cookie.sameSite)) cookie.sameSite = "Lax";
-}
+    // 🧹 Clean and normalise cookies before adding them
+    for (const cookie of cookies) {
+      if (cookie.sameSite === "no_restriction") cookie.sameSite = "None";
+      else if (cookie.sameSite === "unspecified" || !cookie.sameSite)
+        cookie.sameSite = "Lax";
+      else if (!["Strict", "Lax", "None"].includes(cookie.sameSite))
+        cookie.sameSite = "Lax";
+    }
 
-await context.addCookies(cookies);
-const page = await context.newPage();
+    await context.addCookies(cookies);
+    const page = await context.newPage();
 
     console.log("🌐 Navigating to TikTok upload page...");
-    await page.goto("https://www.tiktok.com/upload", { timeout: 60000 });
+    await page.goto("https://www.tiktok.com/upload", {
+      waitUntil: "networkidle",
+      timeout: 180000, // 3-minute timeout
+    });
+
+    await page.waitForTimeout(5000); // Extra buffer
 
     console.log("📤 Uploading video...");
     await page.setInputFiles('input[type="file"]', tempVideoPath);
 
     console.log("📝 Adding caption...");
-    await page.waitForSelector('[placeholder=\"Describe your video\"]', { timeout: 60000 });
+    await page.waitForSelector('[placeholder=\"Describe your video\"]', {
+      timeout: 60000,
+    });
     await page.fill('[placeholder=\"Describe your video\"]', caption || "");
 
     console.log("📦 Posting...");
