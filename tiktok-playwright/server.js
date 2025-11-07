@@ -17,10 +17,10 @@ function decryptCookies() {
       throw new Error("Missing encrypted cookies or password.");
     }
 
-    // Decode from Base64 first
+    // Decode Base64 string into binary data
     const encrypted = Buffer.from(encryptedBase64, "base64");
 
-    // OpenSSL-compatible AES-256-CBC decryption
+    // Validate header
     const saltHeader = encrypted.slice(0, 8).toString();
     if (saltHeader !== "Salted__") {
       throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
@@ -29,7 +29,7 @@ function decryptCookies() {
     const salt = encrypted.slice(8, 16);
     const encryptedData = encrypted.slice(16);
 
-    // Derive key and IV using OpenSSL's method
+    // Derive key and IV using OpenSSL's EVP_BytesToKey equivalent
     const keyIv = [];
     let prev = Buffer.alloc(0);
     while (Buffer.concat(keyIv).length < 48) {
@@ -42,6 +42,7 @@ function decryptCookies() {
     const key = derived.slice(0, 32);
     const iv = derived.slice(32, 48);
 
+    // Decrypt AES-256-CBC
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
     const decrypted = Buffer.concat([
       decipher.update(encryptedData),
