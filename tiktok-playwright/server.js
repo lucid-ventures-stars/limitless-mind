@@ -3,7 +3,7 @@ import { chromium } from "playwright";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { executablePath } from "playwright-core";
+import playwright from "playwright-core";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -77,7 +77,7 @@ app.post("/upload", async (req, res) => {
     console.log("🎬 Launching Chromium...");
     const browser = await chromium.launch({
       headless: true,
-      executablePath: executablePath("chromium"),
+      executablePath: playwright.chromium.executablePath(),
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
