@@ -49,9 +49,10 @@ function decryptCookies() {
     const encryptedData = encrypted.slice(16);
 
     // 5) PBKDF2 (matches: -pbkdf2 -iter 100000)
-    const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
-    const iv  = crypto.pbkdf2Sync(password, salt, 100000, 16, "sha256");
-
+    const keyIv = crypto.pbkdf2Sync(password, salt, 100000, 48, "sha256");
+    const key = keyIv.slice(0, 32);
+    const iv = keyIv.slice(32, 48);
+    
     const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
     const decrypted = Buffer.concat([decipher.update(encryptedData), decipher.final()]);
 
