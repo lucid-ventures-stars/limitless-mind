@@ -79,9 +79,16 @@ app.post("/upload", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    const context = await browser.newContext();
-    await context.addCookies(cookies);
-    const page = await context.newPage();
+const context = await browser.newContext();
+
+// 🧹 Normalise sameSite values
+for (const cookie of cookies) {
+  if (cookie.sameSite === "no_restriction") cookie.sameSite = "None";
+  if (cookie.sameSite === "unspecified") delete cookie.sameSite;
+}
+
+await context.addCookies(cookies);
+const page = await context.newPage();
 
     console.log("🌐 Navigating to TikTok upload page...");
     await page.goto("https://www.tiktok.com/upload", { timeout: 60000 });
