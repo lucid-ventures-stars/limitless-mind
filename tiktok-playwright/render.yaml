@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: limitless-mind-tiktok
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    buildFilter:
+      paths:
+        - package.json
+        - package-lock.json
+    cacheDirectories:
+      - node_modules/.cache/ms-playwright
