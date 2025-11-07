@@ -13,14 +13,30 @@ function decryptCookies() {
     const encrypted = Buffer.from(process.env.COOKIES_FILE, "base64");
     const password = process.env.COOKIE_PASSWORD;
 
-    const decipher = crypto.createDecipher("aes-256-cbc", password);
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
+    // ---- OpenSSL compatible decryption ----
+    const saltHeader = encrypted.slice(0, 8).toString();
+    if (saltHeader !== "Salted__") {
+      throw new Error("Missing Salted__ header. Invalid OpenSSL data.");
+    }
+
+    const salt = encrypted.slice(8, 16);
+    const encryptedData = encrypted.slice(16);
+
+    // Derive key and IV the same way OpenSSL does
+    const keyIv = crypto.pbkdf2Sync(password, salt, 1, 48, "md5");
+    const key = keyIv.slice(0, 32);
+    const iv = keyIv.slice(32, 48);
+
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    let decrypted = Buffer.concat([
+      decipher.update(encryptedData),
       decipher.final(),
     ]);
+
+    console.log("🔓 Cookies decrypted successfully.");
     return JSON.parse(decrypted.toString());
   } catch (error) {
-    console.error("❌ Failed to decrypt TikTok cookies:", error.message);
+    console.error("❌ Cookie decryption failed:", error.message);
     throw new Error("Could not decrypt cookies. Check your env variables.");
   }
 }
