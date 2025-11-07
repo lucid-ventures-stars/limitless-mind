@@ -11,7 +11,7 @@ app.use(express.json({ limit: "50mb" }));
 function decryptCookies() {
   try {
     const encrypted = Buffer.from(process.env.COOKIES_FILE, "base64");
-    const password = process.env.COOKIE_PASSWORD;
+    const password = process.env.COOKIE_PASSWORD || process.env.SECRET_KEY;
 
     // ---- OpenSSL-compatible AES-256-CBC decryption ----
     const saltHeader = encrypted.slice(0, 8).toString();
