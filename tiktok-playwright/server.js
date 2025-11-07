@@ -7,6 +7,15 @@ import path from "path";
 const app = express();
 app.use(express.json({ limit: "50mb" }));
 
+console.log("🔍 ENV CHECK:", {
+  COOKIE_PASSWORD: process.env.COOKIE_PASSWORD ? "✅ Loaded" : "❌ Missing",
+  SECRET_KEY: process.env.SECRET_KEY ? "✅ Loaded" : "❌ Missing",
+  COOKIES_FILE: process.env.COOKIES_FILE
+    ? `✅ Loaded (${process.env.COOKIES_FILE.length} chars)`
+    : "❌ Missing",
+  REGION: process.env.REGION ? process.env.REGION : "❌ Missing"
+});
+
 // ---------- Decrypt cookies from environment variable ----------
 function decryptCookies() {
   try {
